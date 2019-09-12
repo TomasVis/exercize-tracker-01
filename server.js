@@ -1,7 +1,7 @@
 const express = require('express')
 const app = express()
 const bodyParser = require('body-parser')
-//const uniqueValidator = require('mongoose-unique-validator');
+var ids = require('short-id');
 const cors = require('cors')
 
 const mongoose = require('mongoose')
@@ -62,29 +62,58 @@ app.put("/person/:id", async (request, response) => {
         response.status(500).send(error);
     }
 });
+app.post("/api/exercise/add",async function(req,res){
+  //console.log("sadasdasd")
+try {
+  let query = await userModel.find({id:req.body.userId});
+  console.log(query)
+  let update = await userModel.findOneAndUpdate(req.body.userId,{$push: {log: {description:req.body.description ,duration: req.body.duration }}},{new: true }) 
+  res.send(query);
 
-
+} catch (err) {
+  console.log('err' + err);
+  res.status(500).send(err);
+  
+}
+});
 app.post("/api/exercise/new-user",async function(req,res){
-  console.log("aaaaaaaaaa")
 try {
   const newUser = new userModel({
-    id: "Stringa",
-    username: "Strasdasiangsgfdg",
+    id: ids.generate(),
+    username: req.body.username,
   });
-  console.log('before save');
-  let saveUser = await newUser.save(); //when fail its goes to catch
-  console.log(saveUser); //when success it print.
-  console.log('after save');
+  let saveUser = await newUser.save(); 
   res.send(saveUser);
 
 } catch (err) {
+  if(err.code == 11000){
+    res.send("User "+ req.body.username + " already exists")
+  }
+  else{
+  console.log('err' + err);
+  res.status(500).send(err);
+  }
+}
+
+})
+
+app.get("/api/exercise/users",async function(req,res){
+  try{
+    let query = await userModel.find();
+    let shortQuery = query.map( (x)=> {
+
+    return  {id : x.id , username : x.username}
+
+    });
+    console.log(shortQuery)
+    res.send(shortQuery);
+
+  } catch (err) {
   console.log('err' + err);
   res.status(500).send(err);
 }
 
 })
-
-
 
 
 
