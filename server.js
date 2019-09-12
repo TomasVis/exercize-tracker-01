@@ -5,7 +5,7 @@ var ids = require('short-id');
 const cors = require('cors')
 
 const mongoose = require('mongoose')
-mongoose.connect(process.env.MLAB_URI || 'mongodb://localhost/exercise-track' )
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost/exercise-track' )
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function() {
@@ -25,14 +25,14 @@ app.get('/', (req, res) => {
 });
 
 
-app.get("/api/wtf", function(req, res){
+/*app.get("/api/wtf", function(req, res){
   //console.log(req.body.username)
   res.json({whats: "up bitches"});
-});
+});*/
 
 var Schema = mongoose.Schema;
 var userSchema = new Schema({
-    id: String,
+    _id: String,
     username: { type : String , unique : true, required : true},
     count: Number,
     log:[{
@@ -45,31 +45,98 @@ var userSchema = new Schema({
 //userSchema.plugin(uniqueValidator);
 var userModel = mongoose.model('userModel', userSchema);
 
-//--------------------------------------------------------
-app.get("/api/wtf", function(req, res){
-  //console.log(req.body.username)
-  res.json({whats: "up bitches"});
+
+/*route_path: '/library'
+actual_request_URL: '/library?userId=546&bookId=6754'
+req.query: {userId: '546', bookId: '6754'}*/
+ 
+
+app.get("/api/exercise/log", async function (req, res) {
+
+try{
+  let user = await userModel.findById(req.query.userId);
+  console.log(req.query.userId+" "+req.query.from+" "+req.query.to+" "+req.query.limit)
+  
+  if(req.query.from){
+    let from = new Date(req.query.from)
+    console.log("query not empty")
+    user.log = user.log.filter(function(x){
+      return x.date.getTime() > from.getTime()
+      //console.log()
+    })
+  }
+  if(req.query.to){
+    let to = new Date(req.query.to)
+    console.log("query not empty")
+    user.log = user.log.filter(function(x){
+      return x.date.getTime() < to.getTime()
+      //console.log()
+    })
+  }
+  if(req.query.limit){
+
+    console.log("query not empty")
+    user.log.splice(req.query.limit)
+  }
+  console.log(user)
+  res.send(user)
+}
+catch (err) {
+  console.log('err' + err);
+  res.status(500).send(err);
+  
+}
+
 });
 
-//--------------------------------------------------------
-app.put("/person/:id", async (request, response) => {
-    try {
-        var person = await PersonModel.findById(request.params.id).exec();
-        person.set(request.body);
-        var result = await person.save();
-        response.send(result);
-    } catch (error) {
-        response.status(500).send(error);
-    }
-});
+
 app.post("/api/exercise/add",async function(req,res){
-  //console.log("sadasdasd")
+console.log(typeof req.body.date)
+console.log(req.body.date)
 try {
-  let query = await userModel.find({id:req.body.userId});
-  console.log(query)
-  let update = await userModel.findOneAndUpdate(req.body.userId,{$push: {log: {description:req.body.description ,duration: req.body.duration }}},{new: true }) 
-  res.send(query);
+  if(req.body.userId == ""){
+    res.send("User ID field can not be empty")
+  }
+  else if(req.body.description == ""){
+    res.send("Description field can not be empty")
+  }
+  else if(isNaN(req.body.duration)){
+    res.send("Duration field must be a number")
+  }
+  else if(req.body.duration == ""){
+    res.send("Duration field can not be empty")
+  }
+  const doesUserExit = await userModel.exists({ _id: req.body.userId });
 
+  if(doesUserExit){
+    //req.body.date
+    let thingToPush = {}
+    if(req.body.date==""){
+      console.log("req.body.date is an empty String")
+      thingToPush = {log: {description:req.body.description ,duration: req.body.duration }};
+    } 
+    else {
+      console.log(req.body.date)
+        var date = 0;
+        if(req.body.date == undefined){
+          date = new Date()
+        }
+        else if(isNaN(req.body.date)){
+          date = new Date( Date.parse(req.body.date));
+        }
+        else if (!isNaN(req.body.date)){
+          date = new Date(Number(req.body.date))
+        }
+        console.log(date.getTime())
+      thingToPush = {log: {description:req.body.description ,duration: req.body.duration, date:date }};
+    } 
+    let update = await userModel.findOneAndUpdate({_id:req.body.userId},{$push: thingToPush},{new: true, useFindAndModify:false }) 
+    //console.log(update)
+    res.send(update);
+  }
+  else{
+    res.send("User does not exist")
+  }  
 } catch (err) {
   console.log('err' + err);
   res.status(500).send(err);
@@ -79,7 +146,7 @@ try {
 app.post("/api/exercise/new-user",async function(req,res){
 try {
   const newUser = new userModel({
-    id: ids.generate(),
+    _id: ids.generate(),
     username: req.body.username,
   });
   let saveUser = await newUser.save(); 
@@ -102,7 +169,7 @@ app.get("/api/exercise/users",async function(req,res){
     let query = await userModel.find();
     let shortQuery = query.map( (x)=> {
 
-    return  {id : x.id , username : x.username}
+    return  {_id : x._id , username : x.username}
 
     });
     console.log(shortQuery)
