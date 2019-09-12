@@ -106,37 +106,39 @@ try {
   else if(req.body.duration == ""){
     res.send("Duration field can not be empty")
   }
+  else {
   const doesUserExit = await userModel.exists({ _id: req.body.userId });
 
-  if(doesUserExit){
-    //req.body.date
-    let thingToPush = {}
-    if(req.body.date==""){
-      console.log("req.body.date is an empty String")
-      thingToPush = {log: {description:req.body.description ,duration: req.body.duration }};
-    } 
-    else {
-      console.log(req.body.date)
-        var date = 0;
-        if(req.body.date == undefined){
-          date = new Date()
-        }
-        else if(isNaN(req.body.date)){
-          date = new Date( Date.parse(req.body.date));
-        }
-        else if (!isNaN(req.body.date)){
-          date = new Date(Number(req.body.date))
-        }
-        console.log(date.getTime())
-      thingToPush = {log: {description:req.body.description ,duration: req.body.duration, date:date }};
-    } 
-    let update = await userModel.findOneAndUpdate({_id:req.body.userId},{$push: thingToPush},{new: true, useFindAndModify:false }) 
-    //console.log(update)
-    res.send(update);
+    if(doesUserExit){
+      //req.body.date
+      let thingToPush = {}
+      if(req.body.date==""){
+        console.log("req.body.date is an empty String")
+        thingToPush = {log: {description:req.body.description ,duration: req.body.duration }};
+      } 
+      else {
+        console.log(req.body.date)
+          var date = 0;
+          if(req.body.date == undefined){
+            date = new Date()
+          }
+          else if(isNaN(req.body.date)){
+            date = new Date( Date.parse(req.body.date));
+          }
+          else if (!isNaN(req.body.date)){
+            date = new Date(Number(req.body.date))
+          }
+          console.log(date.getTime())
+        thingToPush = {log: {description:req.body.description ,duration: req.body.duration, date:date }};
+      } 
+      let update = await userModel.findOneAndUpdate({_id:req.body.userId},{$push: thingToPush},{new: true, useFindAndModify:false }) 
+      //console.log(update)
+      res.send(update);
+    }
+    else{
+      res.send("User does not exist")
+    }  
   }
-  else{
-    res.send("User does not exist")
-  }  
 } catch (err) {
   console.log('err' + err);
   res.status(500).send(err);
